@@ -718,11 +718,46 @@ def main():
             members_count = get_meeting_members()
             if members_count and members_count > total_members:
                 total_members = members_count
+                
 
         if "leave_if_last" in config and config['leave_if_last'] and interval_count % 5 == 0 and interval_count > 0:
             if current_meeting is not None and members_count is not None and total_members is not None:
                 if handle_leave_threshold(members_count, total_members):
                     total_members = None
+        
+        # Check if any of given keywords in config file was given, and respond.
+        # Method used by hosts to confirm that you're not bot
+        if "Check_and_reply" in config and config["Check_and_reply"] != "":
+            time.sleep(3)
+            try:
+                browser.execute_script("document.getElementById('chat-button').click()")
+                text_input = wait_until_found('div[role="textbox"] > div', 5)
+                #text_output = browser.find_elements_by_css_selector('div:nth-of-type(n+4) div.message-body')
+                Elements = browser.find_elements_by_css_selector('div:nth-child(2) > see-more > div > div > div')
+                msstext = Elements.get_attribute('#messageBody')
+                print(msstext)
+                
+                #get all messages texts as MessageArr
+                
+                #for each Ms in MessageArr
+                    #for each Kw in KeywordArr
+                        #if Ms = Kw:
+                            #SendMessageFlag = True:
+                            
+                js_change_text = """
+                  var elm = arguments[0], txt = arguments[1];
+                  elm.innerHTML = txt;
+                  """
+    
+                browser.execute_script(js_change_text, text_input, config["Check_and_reply"])
+                time.sleep(3)
+                send_button = wait_until_found("#send-message-button", 5)
+                send_button.click()
+                print(f'Detected keywords and sent message {config["Check_and_reply"]}')
+                discord_notification("Sent message", {config["Chee"]})
+            except (exceptions.JavascriptException, exceptions.ElementNotInteractableException):
+                print("Keywords not detected, message not sent.")
+                pass
 
         interval_count += 1
 
