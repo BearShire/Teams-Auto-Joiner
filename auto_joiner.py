@@ -301,7 +301,7 @@ def prepare_page(include_calendar):
 def get_all_teams():
     team_elems = browser.find_elements_by_css_selector(
         "ul>li[role='treeitem']>div[sv-element]")
-
+    
     team_names = [team_elem.get_attribute("data-tid") for team_elem in team_elems]
     team_names = [team_name[team_name.find('team-') + 5:team_name.rfind("-li")] for team_name in team_names]
 
@@ -310,6 +310,17 @@ def get_all_teams():
 
     return [Team(team_names[i], team_ids[i]) for i in range(len(team_elems))]
 
+def get_all_messages():
+    chat_elems = browser.find_elements_by_css_selector(
+        "#page-content-wrapper > div.flex-fill > div > calling-screen > div > div.ts-calling-screen.flex-fill.call-connected.PERSISTENT.GRID.passive-bar-available.pip-expanded.show-myself-preview.has-meeting-info.closed-captions-hidden.show-chat.has-panel.trigger-overlap.immersive > meeting-panel-components > calling-chat > div > context-message-pane > div.ts-message-content.flex-fill > message-list")
+
+    msg_text = [chat_elem.get_attribute("data-tid") for chat_elem in chat_elems]
+    msg_date = [chat_elem.get_attribute("data-tid") for chat_elem in chat_elems]
+
+    #team_author = [chat_elem.find_element_by_css_selector("h3") for chat_elem in chat_elems]
+    #team_ids = [team_header.get_attribute("id") for team_header in team_headers]
+
+    return [Team(msg_text[i], msg_date[i]) for i in range(len(chat_elems))]
 
 def get_meetings(teams):
     global meetings
@@ -732,12 +743,22 @@ def main():
             try:
                 browser.execute_script("document.getElementById('chat-button').click()")
                 text_input = wait_until_found('div[role="textbox"] > div', 5)
-                #text_output = browser.find_elements_by_css_selector('div:nth-of-type(n+4) div.message-body')
-                Elements = browser.find_elements_by_css_selector('div:nth-child(2) > see-more > div > div > div')
-                msstext = Elements.get_attribute('#messageBody')
-                print(msstext)
                 
-                #get all messages texts as MessageArr
+                #Get messages values
+                msg_dates = [chat_elem.get_attribute('title') for chat_elem in browser.find_elements_by_xpath("//span[@class='ts-created message-datetime']")]
+                msg_texts = [chat_elem.text for chat_elem in browser.find_elements_by_xpath("//div[@data-tid='messageBodyContent']")]
+                msg_usernames = [chat_elem.text for chat_elem in browser.find_elements_by_xpath("//div[@data-tid='threadBodyDisplayName']")]
+               
+                #Convert messages string-dates into datetime objects
+                for index, item in enumerate(msg_dates):
+                    CharIn = item.find(",")+1
+                    msg_dates[index] = (item[:CharIn] + timestamp.strftime("%Y") + item[CharIn:])
+                msg_ConDates = [datetime.strptime(date, '%d %B,%Y %H:%M:%S') for date in msg_dates]
+               
+                #Calculate difference 
+                for datet in msg_ConDates:
+                    print(divmod(abs(datet-timestamp).total_seconds(), 3600)[0])
+
                 
                 #for each Ms in MessageArr
                     #for each Kw in KeywordArr
@@ -756,6 +777,7 @@ def main():
                 print(f'Detected keywords and sent message {config["Check_and_reply"]}')
                 discord_notification("Sent message", {config["Chee"]})
             except (exceptions.JavascriptException, exceptions.ElementNotInteractableException):
+                get_all_messages()
                 print("Keywords not detected, message not sent.")
                 pass
 
